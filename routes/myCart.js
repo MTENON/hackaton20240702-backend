@@ -11,8 +11,24 @@ const { filterObjectArray, checkArray } = require('../functions/functions')
 //GET récupère les informations de Cart pour les afficher
 //dans le formulaire Cart
 router.get('/', (req, res) => {
-    Cart.find().then(data => {
-        res.json(data)
+    Cart.find({ booked: false }).then(data => {
+        res.json({ data: data })
+    })
+})
+
+//GET bookedCart permet de récupérer tous les objets du Cart qui sont booked
+router.get('/bookedCart', (req, res) => {
+    Cart.find({ booked: true }).then(data => {
+        if (data.length === 0) {
+            res.json({ data: data, sum: 0 })
+        }
+
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            sum += data[i].price;
+        };
+
+        res.json({ data: data, sum: sum })
     })
 })
 
@@ -20,7 +36,13 @@ router.get('/', (req, res) => {
 //search et renvoie les informations
 //DOIT vérifier que le voyage n'est pas déjà dans le Cart et dans ce cas
 //ne doit pas l'afficher.
-router.get('/search', (req, res) => {
+router.post('/search', (req, res) => {
+
+    if (!req.body.departure || !req.body.arrival || !req.body.date) {
+        res.json({ result: false, error: "Missing or empty fields" });
+        return;
+    }
+
     const departure = req.body.departure;
     const arrival = req.body.arrival;
     const date = req.body.date; //La date doit être sous le format YYYY-MM-DD
@@ -55,6 +77,12 @@ router.get('/search', (req, res) => {
 
 // POST une recherche et l'ajoute à MyCart
 router.post('/', (req, res) => {
+
+    if (!req.body.departure || !req.body.arrival || !req.body.date) {
+        res.json({ result: false, error: "Missing or empty fields" });
+        return;
+    }
+
     const departure = req.body.departure;
     const arrival = req.body.arrival;
     const date = req.body.date;
@@ -85,14 +113,23 @@ router.post('/', (req, res) => {
 });
 
 //POST route update l'état booked d'un cart
-// router.post('/bookCart', (res, req) => {
-//     Cart.find({}).then((data) => {
-//         res.json(data)
-//     })
-// })
+router.post('/bookCart', (req, res) => {
+    Cart.updateMany(
+        {},
+        { booked: true }
+    ).then((data) => {
+        res.json({ updatedData: data });
+    })
+})
 
 //DELETE route de deletion d'un élément du cart à partir de l'id du Trip
 router.delete('/', (req, res) => {
+
+    if (!tripId) {
+        res.json({ result: 'false', error: 'Missing or empty fields' });
+        return;
+    }
+
     const tripId = req.body.tripId
 
     Cart.deleteOne({ trip: tripId }).then((data) => {
