@@ -5,10 +5,11 @@ var router = express.Router();
 //Import du model Cart
 const Cart = require('../models/carts');
 const Trip = require('../models/trips');
-const { checkBody, checkArray } = require('../functions/functions')
+const { filterObjectArray, checkArray } = require('../functions/functions')
 //--------------------
 
-//GET tous les voyages dans myCart
+//GET récupère les informations de Cart pour les afficher
+//dans le formulaire Cart
 router.get('/', (req, res) => {
     Cart.find().then(data => {
         res.json(data)
@@ -17,6 +18,8 @@ router.get('/', (req, res) => {
 
 //GET/trips les voyages dont le body renseigné est celui du formulaire
 //search et renvoie les informations
+//DOIT vérifier que le voyage n'est pas déjà dans le Cart et dans ce cas
+//ne doit pas l'afficher.
 router.get('/search', (req, res) => {
     const departure = req.body.departure;
     const arrival = req.body.arrival;
@@ -31,12 +34,24 @@ router.get('/search', (req, res) => {
     const findDate = new Date(date)
     const findTomorow = new Date(demain)
 
-
     Trip.find({ departure, arrival, date: { $gte: findDate, $lte: findTomorow } }).then(data => {
-        // res.json({ data: date, demain: demain, day: day })
-        res.json({ data: data })
-    })
-})
+
+        const searchResult = data;
+
+        //Maintenant il faut vérifier dans le cart que ces données n'existent pas déjà
+        //Si dans le cart => NE PAS AFFICHER
+
+        // res.json({ data: searchResult })
+
+        Cart.find({}).then((data) => {
+            let finalArray = filterObjectArray(searchResult, data);
+            res.json(finalArray);
+            //Le finalArray ne comprend QUE les résultats qui ne sont pas situé dans le cart
+            //Et ce si ils sont Cart OU Booke
+        })
+
+    });
+});
 
 // POST une recherche et l'ajoute à MyCart
 router.post('/', (req, res) => {
@@ -66,10 +81,23 @@ router.post('/', (req, res) => {
             res.json({ Error: "Le voyage existe déjà" });
         }
 
-    })
-})
+    });
+});
 
-//GET/cart récupère les informations de Cart pour les afficher
-//dans le formulaire Cart
+//POST route update l'état booked d'un cart
+// router.post('/bookCart', (res, req) => {
+//     Cart.find({}).then((data) => {
+//         res.json(data)
+//     })
+// })
+
+//DELETE route de deletion d'un élément du cart à partir de l'id du Trip
+router.delete('/', (req, res) => {
+    const tripId = req.body.tripId
+
+    Cart.deleteOne({ trip: tripId }).then((data) => {
+        res.json(data)
+    })
+});
 
 module.exports = router;
