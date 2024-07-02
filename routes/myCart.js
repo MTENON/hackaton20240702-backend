@@ -1,4 +1,5 @@
-var express = require('express')
+var moment = require('moment');
+var express = require('express');
 var router = express.Router();
 
 //Import du model Cart
@@ -11,6 +12,29 @@ const { checkBody, checkArray } = require('../functions/functions')
 router.get('/', (req, res) => {
     Cart.find().then(data => {
         res.json(data)
+    })
+})
+
+//GET/trips les voyages dont le body renseigné est celui du formulaire
+//search et renvoie les informations
+router.get('/search', (req, res) => {
+    const departure = req.body.departure;
+    const arrival = req.body.arrival;
+    const date = req.body.date; //La date doit être sous le format YYYY-MM-DD
+
+    const day2 = Number(moment(date).format('DD')) + 1
+    let demain = `${moment(date).format('YYYY')}-${moment(date).format('MM')}-${day2}`;
+    demain = moment(demain).format('YYYY-MM-DD');
+
+    // const airedAt = { $gte: date }
+
+    const findDate = new Date(date)
+    const findTomorow = new Date(demain)
+
+
+    Trip.find({ departure, arrival, date: { $gte: findDate, $lte: findTomorow } }).then(data => {
+        // res.json({ data: date, demain: demain, day: day })
+        res.json({ data: data })
     })
 })
 
@@ -44,5 +68,8 @@ router.post('/', (req, res) => {
 
     })
 })
+
+//GET/cart récupère les informations de Cart pour les afficher
+//dans le formulaire Cart
 
 module.exports = router;
