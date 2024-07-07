@@ -12,7 +12,15 @@ const { filterObjectArray, checkArray } = require('../functions/functions')
 //dans le formulaire Cart
 router.get('/', (req, res) => {
     Cart.find({ booked: false }).then(data => {
-        res.json({ data: data })
+        let hour = [];
+        let price = 0;
+
+        for (let i = 0; i < data.length; i++) {
+            hour.push(moment(data[i].date).format('hh:mm'));
+            price += data[i].price;
+        };
+
+        res.json({ result: data, hour: hour, price: price })
     })
 })
 
@@ -23,12 +31,22 @@ router.get('/bookedCart', (req, res) => {
             res.json({ data: data, sum: 0 })
         }
 
+        //affichage des heures restantes et de la somme
+        let now = new Date();
+        let leftHours = [];
+        let hour = [];
         let sum = 0;
         for (let i = 0; i < data.length; i++) {
             sum += data[i].price;
+
+            hour.push(moment(data[i].date).format('HH:MM'))
+
+            leftHours.push(moment(now).subtract(data[i].date).format('H'))
         };
 
-        res.json({ data: data, sum: sum })
+
+
+        res.json({ data: data, sum: sum, hour: hour, leftHours: leftHours })
     })
 })
 
@@ -47,9 +65,7 @@ router.post('/search', (req, res) => {
     const arrival = req.body.arrival;
     const date = req.body.date; //La date doit être sous le format YYYY-MM-DD
 
-    const day2 = Number(moment(date).format('DD')) + 1
-    let demain = `${moment(date).format('YYYY')}-${moment(date).format('MM')}-${day2}`;
-    demain = moment(demain).format('YYYY-MM-DD');
+    let demain = moment(date).add(1, 'd').format('YYYY-MM-DD');
     // const airedAt = { $gte: date }
 
     const findDate = new Date(date)
@@ -94,7 +110,7 @@ router.post('/', (req, res) => {
     Cart.find({ departure, arrival, date }).then(data => {
         if (checkArray(data)) {
             Trip.findOne({ departure, arrival, date }).then(data => {
-                if (!data) {
+                if (data) {
                     const newCart = new Cart({
                         departure: data.departure,
                         arrival: data.arrival,
@@ -108,37 +124,39 @@ router.post('/', (req, res) => {
                         res.json({ data: data, result: 'Nouvel objet dans le Cart' })
                     })
                 } else {
-                    res.json({ result: false, Error: "Trip n'existe pas dans Cart" })
+                    res.json({ result: false, Error: "Data n'existe pas." })
                 }
             })
         } else {
-            res.json({ result: false, Error: "Le voyage existe déjà" });
+            res.json({ result: false, Error: "Le voyage est déjà dans la base de donnée." });
         }
 
     });
 });
 
-//POST route update l'état booked d'un cart
-router.post('/bookCart', (req, res) => {
+//GET route update l'état booked d'un cart
+router.get('/bookCart', (req, res) => {
     Cart.updateMany(
         {},
         { booked: true }
     ).then((data) => {
         res.json({ updatedData: data });
     })
-})
+});
 
 //DELETE route de deletion d'un élément du cart à partir de l'id du Trip
 router.delete('/', (req, res) => {
+    const departure = req.body.departure;
+    const arrival = req.body.arrival;
+    const price = req.body.price;
 
-    if (!tripId) {
+
+    if (!departure || !arrival || !price) {
         res.json({ result: false, error: 'Missing or empty fields' });
         return;
     }
 
-    const tripId = req.body.tripId
-
-    Cart.deleteOne({ trip: tripId }).then((data) => {
+    Cart.deleteOne({ departure, arrival, price }).then((data) => {
         res.json(data)
     })
 });
