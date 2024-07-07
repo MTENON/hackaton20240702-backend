@@ -31,12 +31,22 @@ router.get('/bookedCart', (req, res) => {
             res.json({ data: data, sum: 0 })
         }
 
+        //affichage des heures restantes et de la somme
+        let now = new Date();
+        let leftHours = [];
+        let hour = [];
         let sum = 0;
         for (let i = 0; i < data.length; i++) {
             sum += data[i].price;
+
+            hour.push(moment(data[i].date).format('HH:MM'))
+
+            leftHours.push(moment(now).subtract(data[i].date).format('H'))
         };
 
-        res.json({ data: data, sum: sum })
+
+
+        res.json({ data: data, sum: sum, hour: hour, leftHours: leftHours })
     })
 })
 
@@ -124,7 +134,7 @@ router.post('/', (req, res) => {
     });
 });
 
-//POST route update l'état booked d'un cart
+//GET route update l'état booked d'un cart
 router.get('/bookCart', (req, res) => {
     Cart.updateMany(
         {},
@@ -132,19 +142,21 @@ router.get('/bookCart', (req, res) => {
     ).then((data) => {
         res.json({ updatedData: data });
     })
-})
+});
 
 //DELETE route de deletion d'un élément du cart à partir de l'id du Trip
 router.delete('/', (req, res) => {
+    const departure = req.body.departure;
+    const arrival = req.body.arrival;
+    const price = req.body.price;
 
-    if (!tripId) {
+
+    if (!departure || !arrival || !price) {
         res.json({ result: false, error: 'Missing or empty fields' });
         return;
     }
 
-    const tripId = req.body.tripId
-
-    Cart.deleteOne({ trip: tripId }).then((data) => {
+    Cart.deleteOne({ departure, arrival, price }).then((data) => {
         res.json(data)
     })
 });
